@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EPA · Premier League</title>
+<style>
+:root{--bg:#fff;--fg:#14181f;--mu:#667085;--bd:#e4e7ec;--ac:#1f3864;--hi:#f5f7fa;--pos:#0f7b4f;--neg:#b42318;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1319;--fg:#e8ebf0;--mu:#98a2b3;--bd:#262c36;--ac:#7aa2f7;--hi:#171c24;--pos:#4ade80;--neg:#f87171;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1319;--fg:#e8ebf0;--mu:#98a2b3;--bd:#262c36;--ac:#7aa2f7;--hi:#171c24;--pos:#4ade80;--neg:#f87171;color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:0 0 2px}.mu{color:var(--mu);font-size:13px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+input,select{background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:7px 9px;font:inherit}
+#q{flex:1;min-width:160px}#min{width:90px}
+#t{overflow-x:auto;border:1px solid var(--bd);border-radius:8px}
+table{border-collapse:collapse;width:100%;white-space:nowrap}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--bd)}
+th:nth-child(-n+4),td:nth-child(-n+4){text-align:left}
+th{background:var(--hi);cursor:pointer;user-select:none;font-size:12px}
+tbody tr:hover{background:var(--hi)}
+.b{font-weight:600}.bar{display:inline-block;height:8px;background:var(--ac);border-radius:4px;margin-right:6px;opacity:.7}
+.n{color:var(--neg)}details{margin-top:14px}summary{cursor:pointer}
+</style></head><body><main>
+<h1>EPA · Premier League 2026/27</h1>
+<div class="mu" id="up">Carregando…</div>
+<div class="ctl">
+<input id="q" type="search" placeholder="Buscar jogador">
+<select id="pos"><option value="">Todas as posições</option><option>GK</option><option>DF</option><option>MF</option><option>FW</option></select>
+<select id="team"></select>
+<label class="mu">Mín. 90s <input id="min" type="number" min="0" step="0.5" value="1"></label>
+<span class="mu" id="n" style="align-self:center"></span>
+</div>
+<div id="t"></div>
+<details><summary class="mu">Como o EPA é calculado</summary>
+<p class="mu">Cada jogador recebe uma nota de ataque (gols, assistências, xG, xA) e uma de defesa (desarmes, cortes, bloqueios e interceptações). O time tem um pool de vitórias-equivalentes (V + 0,33 × E), dividido meio a meio entre ataque e defesa. O jogador fica com a fatia proporcional à sua nota no time, e EPA = Win Shares × 3. PAA/90 = EPA/90 menos o nível de reposição (0,013). EPA/90 só aparece com pelo menos o mínimo de 90s. Dados: API do Fantasy Premier League, atualizados todo dia.</p></details>
+</main>
+<script>
+const $=s=>document.querySelector(s),f=(v,n=2)=>v==null?'–':v.toFixed(n);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cols=[['name','Jogador'],['team','Time'],['pos','Pos'],['n90','90s'],['oepa','Ataque'],['depa','Defesa'],['epa','EPA'],['epa90','EPA/90'],['paa','PAA/90']];
+let D,sort={k:'epa',d:-1};
+async function init(){
+ try{D=window.__EPA__||await(await fetch('data.json')).json()}catch(e){$('#t').innerHTML='<p class="mu" style="padding:12px">Não foi possível carregar data.json.</p>';return}
+ $('#up').textContent='Atualizado em '+new Date(D.updated).toLocaleString('pt-BR')+' · até '+D.games+' jogos por time';
+ $('#team').innerHTML='<option value="">Todos os times</option>'+[...new Set(D.players.map(p=>p.team))].sort().map(t=>`<option>${esc(t)}</option>`).join('');
+ ['q','pos','team','min'].forEach(i=>$('#'+i).addEventListener('input',render));render();
+}
+function render(){
+ const q=$('#q').value.toLowerCase(),pos=$('#pos').value,tm=$('#team').value,mn=+$('#min').value||0,{k,d}=sort;
+ const r=D.players.filter(p=>(!q||(p.full+' '+p.name).toLowerCase().includes(q))&&(!pos||p.pos===pos)&&(!tm||p.team===tm)&&p.n90>=mn);
+ r.sort((a,b)=>{const x=a[k],y=b[k];if(x==null)return 1;if(y==null)return -1;return(typeof x==='string'?x.localeCompare(y):x-y)*d});
+ const mx=Math.max(...D.players.map(p=>p.epa),.001);
+ $('#t').innerHTML='<table><thead><tr><th>#</th>'+cols.map(([c,l])=>`<th data-k="${c}">${l}${k===c?(d>0?' ▲':' ▼'):''}</th>`).join('')+'</tr></thead><tbody>'+
+ r.map((p,i)=>`<tr><td>${i+1}</td><td>${esc(p.name)}</td><td>${esc(p.team)}</td><td>${p.pos}</td><td>${f(p.n90,1)}</td><td>${f(p.oepa)}</td><td>${f(p.depa)}</td><td class="b"><span class="bar" style="width:${Math.max(0,p.epa/mx*60)}px"></span>${f(p.epa)}</td><td>${f(p.epa90,3)}</td><td class="${p.paa<0?'n':''}">${f(p.paa,3)}</td></tr>`).join('')+'</tbody></table>';
+ document.querySelectorAll('th[data-k]').forEach(h=>h.onclick=()=>{const c=h.dataset.k;sort=sort.k===c?{k:c,d:-sort.d}:{k:c,d:['name','team','pos'].includes(c)?1:-1};render()});
+ $('#n').textContent=r.length+' jogadores';
+}
+init();
+</script></body></html>

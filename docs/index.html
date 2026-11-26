@@ -21,10 +21,11 @@ tbody tr:hover{background:var(--hi)}
 .b{font-weight:600}.bar{display:inline-block;height:8px;background:var(--ac);border-radius:4px;margin-right:6px;opacity:.7}
 .n{color:var(--neg)}details{margin-top:14px}summary{cursor:pointer}
 </style></head><body><main>
-<h1>EPA · Premier League 2026/27</h1>
+<h1>EPA · Premier League</h1>
 <div class="mu" id="up">Carregando…</div>
 <div class="ctl">
 <input id="q" type="search" placeholder="Buscar jogador">
+<select id="season"><option value="data.json">2026/27 (atual)</option><option value="data/2025-26.json">2025/26</option></select>
 <select id="pos"><option value="">Todas as posições</option><option>GK</option><option>DF</option><option>MF</option><option>FW</option></select>
 <select id="team"></select>
 <label class="mu">Mín. 90s <input id="min" type="number" min="0" step="0.5" value="1"></label>
@@ -32,19 +33,20 @@ tbody tr:hover{background:var(--hi)}
 </div>
 <div id="t"></div>
 <details><summary class="mu">Como o EPA é calculado</summary>
-<p class="mu">Cada jogador recebe uma nota de ataque (gols, assistências, xG, xA) e uma de defesa (desarmes, cortes, bloqueios e interceptações). O time tem um pool de vitórias-equivalentes (V + 0,33 × E), dividido meio a meio entre ataque e defesa. O jogador fica com a fatia proporcional à sua nota no time, e EPA = Win Shares × 3. PAA/90 = EPA/90 menos o nível de reposição (0,013). EPA/90 só aparece com pelo menos o mínimo de 90s. Dados: API do Fantasy Premier League, atualizados todo dia.</p></details>
+<p class="mu">Cada jogador recebe uma nota de ataque (gols, assistências, xG, xA) e uma de defesa (desarmes, cortes, bloqueios e interceptações). O time tem um pool de vitórias-equivalentes (V + 0,33 × E), dividido meio a meio entre ataque e defesa. O jogador fica com a fatia proporcional à sua nota no time, e EPA = Win Shares × 3. PAA/90 = EPA/90 menos o nível de reposição (0,013). EPA/90 só aparece com pelo menos o mínimo de 90s. Dados: API do Fantasy Premier League, da temporada atual atualizados todo dia. Temporadas anteriores só entram se tiverem as mesmas estatísticas (desarmes e cortes+bloqueios+interceptações existem no FPL a partir de 2025/26).</p></details>
 </main>
 <script>
 const $=s=>document.querySelector(s),f=(v,n=2)=>v==null?'–':v.toFixed(n);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const cols=[['name','Jogador'],['team','Time'],['pos','Pos'],['n90','90s'],['oepa','Ataque'],['depa','Defesa'],['epa','EPA'],['epa90','EPA/90'],['paa','PAA/90']];
 let D,sort={k:'epa',d:-1};
-async function init(){
- try{D=window.__EPA__||await(await fetch('data.json')).json()}catch(e){$('#t').innerHTML='<p class="mu" style="padding:12px">Não foi possível carregar data.json.</p>';return}
+async function load(){
+ try{D=await(await fetch($('#season').value+'?v='+Date.now())).json()}catch(e){$('#t').innerHTML='<p class="mu" style="padding:12px">Não foi possível carregar os dados.</p>';return}
  $('#up').textContent='Atualizado em '+new Date(D.updated).toLocaleString('pt-BR')+' · até '+D.games+' jogos por time';
  $('#team').innerHTML='<option value="">Todos os times</option>'+[...new Set(D.players.map(p=>p.team))].sort().map(t=>`<option>${esc(t)}</option>`).join('');
- ['q','pos','team','min'].forEach(i=>$('#'+i).addEventListener('input',render));render();
+ render();
 }
+function init(){['q','pos','team','min'].forEach(i=>$('#'+i).addEventListener('input',render));$('#season').addEventListener('change',load);load()}
 function render(){
  const q=$('#q').value.toLowerCase(),pos=$('#pos').value,tm=$('#team').value,mn=+$('#min').value||0,{k,d}=sort;
  const r=D.players.filter(p=>(!q||(p.full+' '+p.name).toLowerCase().includes(q))&&(!pos||p.pos===pos)&&(!tm||p.team===tm)&&p.n90>=mn);

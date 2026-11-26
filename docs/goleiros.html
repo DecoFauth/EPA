@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Goleiros · EPA</title>
+<style>
+:root{--bg:#fff;--fg:#14181f;--mu:#667085;--bd:#e4e7ec;--ac:#1f3864;--hi:#f5f7fa;--neg:#b42318;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1319;--fg:#e8ebf0;--mu:#98a2b3;--bd:#262c36;--ac:#7aa2f7;--hi:#171c24;--neg:#f87171;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1319;--fg:#e8ebf0;--mu:#98a2b3;--bd:#262c36;--ac:#7aa2f7;--hi:#171c24;--neg:#f87171;color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:16px}h1{font-size:22px;margin:0 0 2px}.mu{color:var(--mu);font-size:13px}a{color:var(--ac)}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;align-items:center}
+input,select{background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:7px 9px;font:inherit}#min{width:80px}
+#t{overflow-x:auto;border:1px solid var(--bd);border-radius:8px}table{border-collapse:collapse;width:100%;white-space:nowrap}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--bd)}th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
+th{background:var(--hi);cursor:pointer;user-select:none;font-size:12px}tbody tr:hover{background:var(--hi)}.n{color:var(--neg)}.b{font-weight:600}
+</style></head><body><main>
+<h1>Goleiros · gols evitados</h1>
+<div class="mu"><a href="index.html">← EPA dos jogadores</a> · <span id="up"></span></div>
+<div class="ctl"><select id="season"><option value="cur">2026/27 (atual)</option><option>2025-26</option><option>2024-25</option><option>2023-24</option><option>2022-23</option></select>
+<label class="mu">Mín. 90s <input id="min" type="number" min="0" step="1" value="5"></label><span class="mu" id="n"></span></div>
+<div id="t"></div>
+<p class="mu"><b>Gols evitados</b> = xG sofrido − gols sofridos, com o goleiro em campo. Positivo = sofreu menos gols do que os chutes esperavam. <b>Ajustado (38 jogos)</b> encolhe esse valor para zero conforme há poucos minutos, porque o indicador varia muito de um ano para o outro (correlação ano a ano de cerca de 0,18 entre 2022/23 e 2025/26, em poucos goleiros). Mistura o efeito do goleiro com o da defesa à frente dele: o FPL não traz a qualidade da finalização (PSxG). Use como indício, não como veredito.</p>
+</main><script>
+const $=s=>document.querySelector(s),f=(v,n=2)=>v==null?'–':v.toFixed(n),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cols=[['name','Goleiro'],['team','Time'],['n90','90s'],['saves','Defesas'],['gc','Gols sofridos'],['xgc','xG sofrido'],['prev','Gols evitados'],['adj','Ajustado (38 jogos)']];
+let G=[],sort={k:'adj',d:-1};
+async function load(){
+ const v=$('#season').value;
+ try{if(v==='cur'){const D=await(await fetch('data.json?v='+Date.now())).json();G=D.gks||[];$('#up').textContent='Atualizado em '+new Date(D.updated).toLocaleString('pt-BR')}
+ else{const j=await(await fetch('data/goleiros.json?v='+Date.now())).json();G=j[v]||[];$('#up').textContent='Temporada '+v.replace('-','/')}}
+ catch(e){G=[];}
+ render();
+}
+function render(){
+ const mn=+$('#min').value||0,{k,d}=sort,r=G.filter(p=>p.n90>=mn);
+ r.sort((a,b)=>(typeof a[k]==='string'?a[k].localeCompare(b[k]):a[k]-b[k])*d);
+ $('#t').innerHTML=G.length?'<table><thead><tr>'+cols.map(([c,l])=>`<th data-k="${c}">${l}${k===c?(d>0?' ▲':' ▼'):''}</th>`).join('')+'</tr></thead><tbody>'+r.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.team)}</td><td>${f(p.n90,1)}</td><td>${p.saves}</td><td>${p.gc}</td><td>${f(p.xgc)}</td><td class="${p.prev<0?'n':''}">${f(p.prev)}</td><td class="b ${p.adj<0?'n':''}">${f(p.adj)}</td></tr>`).join('')+'</tbody></table>':'<p class="mu" style="padding:12px">Sem dados de goleiros para esta temporada (na atual, rode a atualização automática).</p>';
+ document.querySelectorAll('th[data-k]').forEach(h=>h.onclick=()=>{const c=h.dataset.k;sort=sort.k===c?{k:c,d:-sort.d}:{k:c,d:['name','team'].includes(c)?1:-1};render()});
+ $('#n').textContent=r.length+' goleiros';
+}
+$('#season').addEventListener('change',load);$('#min').addEventListener('input',render);load();
+</script></body></html>

@@ -13,6 +13,23 @@ def get(path):
     return r.json()
 
 
+GK_K = 141  # encolhimento (em jogos de 90): estimado em 2022/23-2025/26, r ano a ano de goleiros ~0,18
+
+
+def gk_list(elements, tn):
+    """Goleiros: gols evitados = xG sofrido - gols sofridos (com o goleiro em campo). 'adj' = valor encolhido, por 38 jogos."""
+    out = []
+    for e in elements:
+        if e["element_type"] != 1 or e["minutes"] <= 0:
+            continue
+        n90, xgc = e["minutes"] / 90, float(e["expected_goals_conceded"])
+        prev = xgc - e["goals_conceded"]
+        out.append({"name": e["web_name"], "team": tn[e["team"]], "n90": round(n90, 2), "saves": int(e["saves"]),
+                    "gc": int(e["goals_conceded"]), "xgc": round(xgc, 2), "prev": round(prev, 2),
+                    "adj": round(38 * prev / (n90 + GK_K), 2)})
+    return sorted(out, key=lambda x: -x["adj"])
+
+
 def build(players, rec):
     """players: dicts (name, full, pos, team, n90, goals, assists, xg, xa, tkl, clr); rec: {time: [V, E, D]}"""
     tot = {}
@@ -56,6 +73,7 @@ def main():
                 "tkl": e.get("tackles", 0), "clr": e.get("clearances_blocks_interceptions", 0)}
                for e in boot["elements"] if e["minutes"] > 0]
     data = build(players, rec)
+    data["gks"] = gk_list(boot["elements"], tn)
     with open("docs/data.json", "w", encoding="utf-8") as fh:
         json.dump(data, fh, ensure_ascii=False, separators=(",", ":"))
     print(len(data["players"]), "jogadores, até", data["games"], "jogos por time")

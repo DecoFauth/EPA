@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Projeção · EPA</title>
+<style>
+:root{--bg:#fff;--fg:#14181f;--mu:#667085;--bd:#e4e7ec;--ac:#1f3864;--hi:#f5f7fa;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1319;--fg:#e8ebf0;--mu:#98a2b3;--bd:#262c36;--ac:#7aa2f7;--hi:#171c24;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1319;--fg:#e8ebf0;--mu:#98a2b3;--bd:#262c36;--ac:#7aa2f7;--hi:#171c24;color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:16px}h1{font-size:22px;margin:0 0 2px}.mu{color:var(--mu);font-size:13px}a{color:var(--ac)}
+#t{overflow-x:auto;border:1px solid var(--bd);border-radius:8px;margin:14px 0}table{border-collapse:collapse;width:100%;white-space:nowrap}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--bd)}th:nth-child(-n+2),td:nth-child(-n+2){text-align:left}
+th{background:var(--hi);font-size:12px}tbody tr:hover{background:var(--hi)}.b{font-weight:600}.z{color:var(--mu)}
+</style></head><body><main>
+<h1>Projeção dos times · Premier League</h1>
+<div class="mu"><a href="index.html">← EPA dos jogadores</a> · <span id="up"></span></div>
+<div id="t"></div>
+<p class="mu"><b>Como funciona.</b> Cada time recebe um rating de ataque e de defesa a partir do xG criado e sofrido, puxado para a média da liga quando há poucos jogos. Os ratings viram o número esperado de gols de cada jogo restante (distribuição de Poisson, com vantagem de mando medida na própria temporada), e a tabela final é simulada 5.000 vezes. A faixa é o intervalo de 80% dos pontos finais. Ataque e Defesa mostram a diferença para a média: defesa negativa = sofre menos xG que a média.</p>
+<p class="mu"><b>Quão confiável é.</b> No teste com as temporadas 2024/25 e 2025/26, nas rodadas 8, 11 e 15, o erro típico dos pontos finais foi de cerca de 9 pontos (RMSE 8,9), contra 11,5 de projetar pelo ritmo atual e 12,2 de assumir que o time faz a média da liga no resto da temporada. O modelo não conhece lesões, elenco, calendário fora da liga nem a força do time na temporada passada. Os ratings (k = 5) foram escolhidos nesses mesmos dados, então o erro real pode ser um pouco maior. Isto é uma estimativa, não uma previsão firme.</p>
+</main><script>
+const f=(v)=>v<.005?'<1%':Math.round(v*100)+'%',e=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pc=v=>(v>=1?'+':'')+Math.round((v-1)*100)+'%';
+(async()=>{try{const D=await(await fetch('projecao.json?v='+Date.now())).json();
+$up=document.getElementById('up');$up.textContent='Atualizado em '+new Date(D.updated).toLocaleString('pt-BR')+' · '+D.games+' jogos por time · '+D.sims+' simulações';
+document.getElementById('t').innerHTML='<table><thead><tr><th>#</th><th>Time</th><th>J</th><th>Pts</th><th>Pts finais</th><th>Faixa 80%</th><th>Título</th><th>Top 4</th><th>Rebaixamento</th><th>Ataque</th><th>Defesa</th></tr></thead><tbody>'+
+D.teams.map((t,i)=>`<tr><td>${i+1}</td><td>${e(t.team)}</td><td>${t.j}</td><td>${t.pts}</td><td class="b">${t.exp.toFixed(1)}</td><td class="z">${t.lo}–${t.hi}</td><td>${f(t.title)}</td><td>${f(t.top4)}</td><td>${f(t.rel)}</td><td>${pc(t.att)}</td><td>${pc(t.dfn)}</td></tr>`).join('')+'</tbody></table>'}
+catch(x){document.getElementById('t').innerHTML='<p class="mu" style="padding:12px">Ainda não há projeção publicada. Rode Actions → Atualizar EPA → Run workflow.</p>'}})();
+</script></body></html>

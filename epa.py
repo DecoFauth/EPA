@@ -74,6 +74,12 @@ def main():
                for e in boot["elements"] if e["minutes"] > 0]
     data = build(players, rec)
     data["gks"] = gk_list(boot["elements"], tn)
+    try:
+        import proj
+        with open("docs/projecao.json", "w", encoding="utf-8") as fh:
+            json.dump(proj.run(boot, fx, tn), fh, ensure_ascii=False, separators=(",", ":"))
+    except Exception as e:
+        print("projeção falhou:", e)
     with open("docs/data.json", "w", encoding="utf-8") as fh:
         json.dump(data, fh, ensure_ascii=False, separators=(",", ":"))
     print(len(data["players"]), "jogadores, até", data["games"], "jogos por time")

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EPA · Brasileirão</title>
+<style>
+:root{--bg:#fff;--fg:#14181f;--mu:#667085;--bd:#e4e7ec;--ac:#1f3864;--hi:#f5f7fa;--pos:#0f7b4f;--neg:#b42318}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1319;--fg:#e8ebf0;--mu:#98a2b3;--bd:#262c36;--ac:#7aa2f7;--hi:#171c24;color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:auto;padding:18px}h1{font-size:24px;margin:0 0 4px}.mu{color:var(--mu);font-size:13px}
+a{color:var(--ac)}.ctl{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+input,select{background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:8px;font:inherit}
+#q{flex:1;min-width:180px}#min{width:90px}#table{overflow-x:auto;border:1px solid var(--bd);border-radius:8px}
+table{border-collapse:collapse;width:100%;white-space:nowrap}th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--bd)}
+th:nth-child(-n+4),td:nth-child(-n+4){text-align:left}th{background:var(--hi);cursor:pointer;font-size:12px}tbody tr:hover{background:var(--hi)}
+.b{font-weight:700}.neg{color:var(--neg)}.bar{display:inline-block;height:8px;background:var(--ac);border-radius:4px;margin-right:6px;opacity:.7}
+</style></head><body><main>
+<h1>EPA · Brasileirão Série A</h1>
+<div class="mu"><a href="index.html">← Voltar ao EPA Premier League</a></div>
+<div class="mu" id="status">Carregando dados…</div>
+<div class="ctl">
+<select id="season"><option value="2026">2026 · Em andamento</option><option value="2025">2025</option><option value="2024">2024</option><option value="2023">2023</option></select>
+<input id="q" type="search" placeholder="Buscar jogador">
+<select id="team"><option value="">Todos os times</option></select>
+<label class="mu">Mín. 90s <input id="min" type="number" min="0" step=".5" value="1"></label>
+<span class="mu" id="count"></span>
+</div><div id="table"></div>
+<p class="mu">EPA de jogadores de linha calculado com a fórmula original. Posições ainda não mapeadas nesta fonte aparecem como “—”. A cobertura das estatísticas varia por temporada; veja as notas metodológicas do projeto.</p>
+</main>
+<script>
+const $=s=>document.querySelector(s),fmt=(v,n=2)=>v==null?'–':Number(v).toFixed(n),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cols=[['name','Jogador'],['team','Time'],['pos','Pos.'],['n90','90s'],['oepa','Ataque'],['depa','Defesa'],['epa','EPA'],['epa90','EPA/90'],['paa','PAA/90']];
+let D,sort={k:'epa',d:-1};
+async function load(){try{D=await(await fetch(`data/brasileirao-${$('#season').value}.json?v=${Date.now()}`)).json()}catch(e){$('#table').textContent='Não foi possível carregar os dados.';return}
+$('#status').textContent=`${D.competition} ${D.season} · ${D.games} jogos por time · ${D.players.length} jogadores · Atualizado em ${new Date(D.updated).toLocaleString('pt-BR')}`;
+$('#team').innerHTML='<option value="">Todos os times</option>'+[...new Set(D.players.map(p=>p.team))].sort().map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');render()}
+function render(){if(!D)return;let q=$('#q').value.toLowerCase(),tm=$('#team').value,mn=Number($('#min').value)||0,{k,d}=sort;
+let rows=D.players.filter(p=>(!q||(`${p.name} ${p.full}`).toLowerCase().includes(q))&&(!tm||p.team===tm)&&p.n90>=mn);
+rows.sort((a,b)=>{let x=a[k],y=b[k];if(x==null)return 1;if(y==null)return -1;return(typeof x==='string'?x.localeCompare(y):x-y)*d});
+let mx=Math.max(...D.players.map(p=>p.epa),.001);
+$('#table').innerHTML='<table><thead><tr><th>#</th>'+cols.map(([c,l])=>`<th data-k="${c}">${l}${k===c?(d>0?' ▲':' ▼'):''}</th>`).join('')+'</tr></thead><tbody>'+rows.map((p,i)=>`<tr><td>${i+1}</td><td>${esc(p.name)}</td><td>${esc(p.team)}</td><td>${esc(p.pos)}</td><td>${fmt(p.n90,1)}</td><td>${fmt(p.oepa)}</td><td>${fmt(p.depa)}</td><td class="b"><span class="bar" style="width:${Math.max(0,p.epa/mx*55)}px"></span>${fmt(p.epa)}</td><td>${fmt(p.epa90,3)}</td><td class="${p.paa<0?'neg':''}">${fmt(p.paa,3)}</td></tr>`).join('')+'</tbody></table>';
+$('#count').textContent=rows.length+' jogadores';document.querySelectorAll('th[data-k]').forEach(h=>h.onclick=()=>{let c=h.dataset.k;sort=sort.k===c?{k:c,d:-sort.d}:{k:c,d:['name','team','pos'].includes(c)?1:-1};render()})}
+['q','team','min'].forEach(id=>$('#'+id).addEventListener('input',render));$('#season').addEventListener('change',load);load();
+</script></body></html>

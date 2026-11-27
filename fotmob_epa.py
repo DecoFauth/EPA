@@ -27,6 +27,46 @@ STAT_FIELDS = {
     "interceptions": ("interception", "substatValue"),
 }
 
+
+# Posições oficiais do FotMob
+POSITION_MAP = {
+    "1": "MF",
+    "11": "GK",
+    "32": "RB",
+    "33": "CB",
+    "34": "CB",
+    "35": "CB",
+    "36": "CB",
+    "37": "CB",
+    "38": "LB",
+    "39": "LWB",
+    "62": "RWB",
+    "64": "DM",
+    "65": "DM",
+    "66": "DM",
+    "68": "LWB",
+    "72": "RM",
+    "73": "CM",
+    "74": "CM",
+    "75": "CM",
+    "76": "CM",
+    "77": "CM",
+    "78": "LM",
+    "82": "RW",
+    "83": "RW",
+    "84": "RW",
+    "85": "AM",
+    "86": "AM",
+    "87": "AM",
+    "88": "LW",
+    "103": "RW",
+    "104": "ST",
+    "105": "ST",
+    "106": "ST",
+    "107": "LW",
+    "115": "ST",
+}
+
 class FotMob:
     def __init__(self, delay=0.55):
         self.delay = max(0.4, float(delay))
@@ -46,6 +86,61 @@ class FotMob:
         if payload.get("action", {}).get("notFound"):
             raise RuntimeError(f"FotMob retornou notFound em {endpoint}: {r.url}")
         return payload
+
+
+
+# Consulta a posição oficial do jogador no perfil do FotMob.
+# O cache evita consultar o mesmo jogador mais de uma vez.
+POSITION_PROFILE_CACHE = {}
+
+def resolve_position(client, player_id, position_id):
+    mapped = POSITION_MAP.get(str(position_id))
+
+    if mapped:
+        return mapped
+
+    cache_key = str(player_id)
+
+    if cache_key in POSITION_PROFILE_CACHE:
+        return POSITION_PROFILE_CACHE[cache_key]
+
+    try:
+        profile = client.get("playerData", {"id": player_id})
+        description = profile.get("positionDescription", {})
+        positions = description.get("positions", [])
+
+        primary = next(
+            (p for p in positions if p.get("isMainPosition")),
+            positions[0] if positions else None
+        )
+
+        if primary:
+            position = primary.get("strPosShort", {}).get("label")
+        else:
+            position = description.get("primaryPosition", {}).get("label")
+
+        generic_positions = {
+            "goalkeeper": "GK",
+            "defender": "DEF",
+            "midfielder": "MF",
+            "forward": "FWD"
+        }
+
+        if position:
+            position = generic_positions.get(
+                position.lower(),
+                position.upper()
+            )
+        else:
+            position = "—"
+
+    except Exception as e:
+        print(f"Não foi possível identificar posição do jogador {player_id}: {e}")
+        position = "—"
+
+    POSITION_PROFILE_CACHE[cache_key] = position
+    return position
+
 
 def val(obj):
     if isinstance(obj, dict): return obj.get("value")
@@ -170,13 +265,22 @@ def process_season(client, season_name, league_id, out_dir):
         source=player["source"]
         team=team_names.get(str(player["team_id"]))
         if not team: raise RuntimeError(f"Time ausente para jogador {player['name']} ({player['fotmob_id']}).")
-        epa_players.append({"name":player["name"],"full":player["name"],"pos":"—","team":team,
+        epa_players.append({"fotmob_id":player["fotmob_id"],"name":player["name"],"full":player["name"],"pos":resolve_position(client, player["fotmob_id"], player.get("position_id")),"team":team,
             "n90":source.get("minutes",0)/90,"goals":source.get("goals",0),"assists":source.get("assists",0),
             "xg":source.get("xg",0),"xa":source.get("xa",0),"tkl":source.get("tkl",0),
             "clr":source.get("clearances",0)+source.get("blocks",0)+source.get("interceptions",0)})
     assert W==dict(goals=.5,assists=.3,xg=.1,xa=.1,tkl=.3,clr=.23)
     assert (DRAW,OFF_SHARE,PTS,REPLACEMENT,MIN90)==(.33,.5,3,.013,1.0)
     result=build(epa_players,rec)
+
+    # Adiciona IDs ao resultado sem alterar os cálculos do EPA
+    ids_por_jogador = {
+        (p["name"], p["team"]): p["fotmob_id"]
+        for p in epa_players
+    }
+    for p in result["players"]:
+        p["fotmob_id"] = ids_por_jogador.get((p["name"], p["team"]))
+
     result.update({"competition":"Brasileirão Série A","season":str(season_name),"source":"FotMob",
         "source_league_id":league_id,"source_season_id":season_id,
         "methodology":"EPA original preservado; fonte e mapeamento dos dados FotMob.",

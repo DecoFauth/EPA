@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Projeção · Brasileirão</title>
+<style>
+:root{--bg:#fff;--fg:#14181f;--mu:#667085;--bd:#e4e7ec;--ac:#1f3864;--hi:#f5f7fa;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1319;--fg:#e8ebf0;--mu:#98a2b3;--bd:#262c36;--ac:#7aa2f7;--hi:#171c24;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1319;--fg:#e8ebf0;--mu:#98a2b3;--bd:#262c36;--ac:#7aa2f7;--hi:#171c24;color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:0 0 2px}.mu{color:var(--mu);font-size:13px}a{color:var(--ac)}
+#t{overflow-x:auto;border:1px solid var(--bd);border-radius:8px;margin:14px 0}
+table{border-collapse:collapse;width:100%;white-space:nowrap}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--bd)}
+th:nth-child(-n+2),td:nth-child(-n+2){text-align:left}
+th{background:var(--hi);font-size:12px}
+tbody tr:hover{background:var(--hi)}.b{font-weight:600}.z{color:var(--mu)}
+</style>
+</head>
+<body>
+<main>
+<h1>Projeção dos times · Brasileirão Série A</h1>
+<div class="mu"><a href="brasileirao.html">← EPA dos jogadores</a> · <span id="up">Carregando…</span></div>
+<div id="t"></div>
+<p class="mu"><b>Como funciona.</b> Cada time recebe um rating de ataque e de defesa a partir do xG criado e sofrido, ajustado em direção à média da liga quando há poucos jogos. Esses ratings estimam os gols esperados de cada partida restante por meio de uma distribuição de Poisson. A tabela final é simulada 5.000 vezes. A faixa mostra o intervalo de 80% dos pontos finais simulados.</p>
+<p class="mu"><b>Probabilidades.</b> Título, G4, 5º lugar (pré-Libertadores), 6º ao 11º lugar (Sul-Americana) e Z4 são estimativas baseadas nas posições definidas atualmente no modelo. Não são garantias de classificação ou rebaixamento.</p>
+</main>
+<script>
+const f=v=>v<.005?'<1%':Math.round(v*100)+'%';
+const e=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pc=v=>(v>=1?'+':'')+Math.round((v-1)*100)+'%';
+(async()=>{
+try{
+const D=await(await fetch('projecao-brasileirao.json?v='+Date.now())).json();
+document.getElementById('up').textContent='Atualizado em '+new Date(D.updated).toLocaleString('pt-BR')+' · '+D.games+' jogos por time · '+D.sims+' simulações';
+document.getElementById('t').innerHTML='<table><thead><tr><th>#</th><th>Time</th><th>J</th><th>Pts</th><th>Pts finais</th><th>Faixa 80%</th><th>Título</th><th>G4</th><th>Pré-Libertadores</th><th>Sul-Americana</th><th>Z4</th><th>Ataque</th><th>Defesa</th></tr></thead><tbody>'+
+D.teams.map((t,i)=>`<tr><td>${i+1}</td><td>${e(t.team)}</td><td>${t.j}</td><td>${t.pts}</td><td class="b">${t.exp.toFixed(1)}</td><td class="z">${t.lo}–${t.hi}</td><td>${f(t.title)}</td><td>${f(t.top4)}</td><td>${f(t.prelib)}</td><td>${f(t.sula)}</td><td>${f(t.rel)}</td><td>${pc(t.att)}</td><td>${pc(t.dfn)}</td></tr>`).join('')+'</tbody></table>';
+}catch(x){
+document.getElementById('t').innerHTML='<p class="mu" style="padding:12px">Ainda não há projeção publicada. Verifique se o arquivo projecao-brasileirao.json está disponível.</p>';
+}
+})();
+</script>
+</body>
+</html>
